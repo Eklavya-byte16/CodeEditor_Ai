@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import PixelBlast from '@/Components/ui/PixelBlast.jsx';
 import './Login.css';
@@ -6,6 +7,7 @@ import './Login.css';
 const API_BASE = import.meta.env.VITE_BACKEND_URL;
 
 const Login = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -18,39 +20,31 @@ const Login = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // NOTE: this uses the implicit flow (access_token). Your backend would need
-  // to call Google's userinfo endpoint with that token to identify the user.
-  // If your backend instead verifies a Google ID token/JWT (which matches
-  // "backend JWT/Google credential verification" from your other work), use
-  // the <GoogleLogin> component's onSuccess, which hands you `credential`
-  // (the ID token) directly — say the word and I'll swap this to that version.
-
   const handleGoogleSignup = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      setError("");
+      setError('');
       setLoading(true);
       try {
         const res = await fetch(`${API_BASE}/auth/google`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ access_token: tokenResponse.access_token }),
         });
- 
+
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.message || "Google sign-up failed.");
+          throw new Error(data.error?.message || 'Google sign-in failed.');
         }
- 
-        console.log("google signup success");
-        // TODO: redirect on success, e.g. navigate('/dashboard')
+
+        navigate('/dashboard');
       } catch (err) {
-        setError(err.message || "Something went wrong. Try again.");
+        setError(err.message || 'Something went wrong. Try again.');
       } finally {
         setLoading(false);
       }
     },
-    onError: () => setError("Google sign-up failed."),
+    onError: () => setError('Google sign-in failed.'),
   });
 
   const handleSubmit = async (e) => {
@@ -83,11 +77,10 @@ const Login = () => {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || 'Invalid email or password.');
+        throw new Error(data.error?.message || 'Invalid email or password.');
       }
 
-      console.log('login success');
-      // TODO: redirect on success, e.g. navigate('/dashboard')
+      navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Something went wrong. Try again.');
     } finally {

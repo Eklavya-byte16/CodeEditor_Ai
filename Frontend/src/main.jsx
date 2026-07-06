@@ -39,9 +39,9 @@ createRoot(document.getElementById('root')).render(
           }
         />
         <Route
-          path="/dasktop"
+          path="/dashboard"
           element={
-            <CheckAuth requireAuth={true}>
+            <CheckAuth requireAuth={false}>
               <Dasktop />
             </CheckAuth>
           }

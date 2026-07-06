@@ -1,23 +1,24 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 
-function getToken() {
-  const raw = localStorage.getItem("token");
-  if (!raw || raw === "undefined" || raw === "null" || raw.trim() === "") {
-    return null;
-  }
-  return raw;
-}
+const API_BASE = import.meta.env.VITE_BACKEND_URL;
 
 function CheckAuth({ children, requireAuth = true }) {
-  const token = getToken();
+  const [status, setStatus] = useState("loading"); // loading | authed | guest
 
-  if (requireAuth && !token) {
+  useEffect(() => {
+    fetch(`${API_BASE}/auth/me`, { credentials: "include" })
+      .then((res) => setStatus(res.ok ? "authed" : "guest"))
+      .catch(() => setStatus("guest"));
+  }, []);
+
+  if (status === "loading") return null;
+
+  if (requireAuth && status === "guest") {
     return <Navigate to="/login" replace />;
   }
-
-  if (!requireAuth && token) {
-    return <Navigate to="/Dasktop" replace />;
+  if (!requireAuth && status === "authed") {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

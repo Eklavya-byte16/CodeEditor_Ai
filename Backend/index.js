@@ -1,41 +1,65 @@
-import { app, allowedOrigin } from "./app.js";
+// 1. Import 'server' alongside app from your app.js file
+import { app, server } from "./app.js"; 
 import mongoose from "mongoose";
-import { createServer } from "http";
-import { Server } from "socket.io";
-import { registerAiSocketHandlers } from "./src/sockets/ai.socket.js";
-import { registerFolderSocketHandlers } from "./src/sockets/folder.socket.js";
-import jwt from "jsonwebtoken";
+// 2. Import the Socket.IO Server engine
+import {initSocket} from "./src/Service/ScoketService.js"
 
-const port = process.env.DEVELOPMENT_PORT || "5000";
-const databaseUrl = process.env.DATABASE_URL;
+const port = process.env.DEVLOPMENT_PORT || "5000"; // Note: Python script must target this port!
+const environment = process.env.BACKEND_ENV || "DEVELOPMENT";
+const database_url = process.env.DATABASE_URL;
 
-let server;
-let io;
+const MAX_RETRIES = 5;
+const RETRY_DELAY_MS = 5000;
 
-const connectDatabase = async () => {
+initSocket(server);
+
+const connectDatabase = async (retriesLeft = MAX_RETRIES) => {
   try {
-    if (!databaseUrl) throw new Error("DATABASE_URL is missing in environment variables");
-    await mongoose.connect(databaseUrl, {
+    if (!database_url) {
+      throw new Error("DATABASE_URL is missing in environment variables");
+    }
+    await mongoose.connect(database_url, {
       serverSelectionTimeoutMS: 5000,
       retryWrites: true,
       maxPoolSize: 10,
     });
-    console.log("✅ Database connected");
+    console.log("✅ connected to Database");
     return true;
   } catch (error) {
-    console.error("❌ Database connection failed:", error.message);
+    console.error("❌ failed to connect:", error.message);
+
+    if (retriesLeft > 0) {
+      console.log(`Retrying in ${RETRY_DELAY_MS / 1000}s... (${retriesLeft} attempts left)`);
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      return connectDatabase(retriesLeft - 1);
+    }
+
+    console.error("❌ Exhausted all retries. Exiting.");
     return false;
   }
 };
 
-mongoose.connection.on("connected",    () => console.log("🔗 MongoDB connected"));
-mongoose.connection.on("disconnected", () => console.log("🔌 MongoDB disconnected"));
-mongoose.connection.on("reconnected",  () => console.log("🔁 MongoDB reconnected"));
-mongoose.connection.on("error",  (err) => console.error("🚨 MongoDB error:", err.message));
+mongoose.connection.on("connected", () => {
+  console.log("🔗 MongoDB connected");
+});
+
+mongoose.connection.on("disconnected", () => {
+  console.log("🔌 MongoDB disconnected");
+});
+
+mongoose.connection.on("reconnected", () => {
+  console.log("🔁 MongoDB reconnected");
+});
+
+mongoose.connection.on("error", (error) => {
+  console.error("🚨 MongoDB error:", error.message);
+});
 
 const gracefulShutdown = async () => {
   try {
     await mongoose.connection.close(true);
+    console.log("Database connection closed");
+
     if (server) {
       server.close(() => {
         console.log("Server closed cleanly");
@@ -44,72 +68,25 @@ const gracefulShutdown = async () => {
       return;
     }
     process.exit(0);
-  } catch (err) {
-    console.error("Shutdown error:", err);
-   
+  } catch (error) {
+    console.error("Shutdown error:", error);
     process.exit(1);
   }
 };
 
 process.on("SIGTERM", gracefulShutdown);
-process.on("SIGINT",  gracefulShutdown);
+process.on("SIGINT", gracefulShutdown);
 
 const startServer = async () => {
-  const ok = await connectDatabase();
-  if (!ok) process.exit(1);
+  const dbConnected = await connectDatabase();
+  if (!dbConnected) {
+    console.error("❌ Could not connect to database. Exiting.");
+    process.exit(1);
+  }
 
-  server = createServer(app);
-
-  io = new Server(server, {
-    cors: {
-      origin: allowedOrigin,
-      methods: ["GET", "POST"],
-      credentials: true,
-    },
-    transports: ["websocket", "polling"],
-    // 50MB buffer — required for folder uploads sent as one socket event
-    maxHttpBufferSize: 50 * 1024 * 1024,
-  });
-
-  // ── JWT auth middleware — runs once per socket connection ──────────────────
-  // After this, ALL communication is socket-only.
-  // HTTP is only used for /auth routes.
-  io.use((socket, next) => {
-    const token = socket.handshake.auth?.token;
-    if (!token) {
-      console.log("❌ Socket rejected: no token");
-      return next(new Error("Authentication failed: no token provided"));
-    }
-    try {
-      const secret = process.env.JWT_ACCESS_SECRET || process.env.JWT_ACCESSTOCKEN_SECRET;
-      const decoded = jwt.verify(token, secret, { issuer: "Ekalvya", audience: "User" });
-      socket.user = { userId: decoded.userId };
-      console.log(`🔒 Socket authed: ${socket.user.userId}`);
-      next();
-    } catch (err) {
-      console.log("❌ Socket token invalid:", err.message);
-      return next(new Error("Authentication failed: invalid token"));
-    }
-  });
-
-  io.on("connection", (socket) => {
-    console.log(`🚀 Socket connected: ${socket.id} (user: ${socket.user?.userId})`);
-
-    // Chat + AI agent (VoiceBox, LogicBox, FolderAgent)
-    registerAiSocketHandlers(io, socket);
-
-    // Folder upload, CRUD, file read/write/delete
-    registerFolderSocketHandlers(io, socket);
-
-    socket.on("disconnect", (reason) => {
-      console.log(`🔌 Socket disconnected: ${socket.id} (${reason})`);
-    });
-  });
-
+  // 5. CRUCIAL FIX: Change from app.listen to server.listen 
   server.listen(port, () => {
-    console.log(`\n🟢 Server running on port ${port}`);
-    console.log(`   HTTP  → /auth, /ai`);
-    console.log(`   WS    → folder ops, AI agent, chat`);
+    console.log(`\n🟢 Server running on port ${port} [${environment}]`);
   });
 
   return server;

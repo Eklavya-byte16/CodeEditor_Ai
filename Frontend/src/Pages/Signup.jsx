@@ -1,101 +1,97 @@
-import React, { useState } from "react";
-import { useGoogleLogin } from "@react-oauth/google";
-import PixelBlast from "@/Components/ui/PixelBlast.jsx";
-import "./Login.css";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
+import PixelBlast from '@/Components/ui/PixelBlast.jsx';
+import './Login.css';
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL;
 
 const Signup = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Same flow as Login.jsx — see note there re: access_token vs ID token
-  // if your backend verifies a Google credential/JWT instead.
   const handleGoogleSignup = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      setError("");
+      setError('');
       setLoading(true);
       try {
         const res = await fetch(`${API_BASE}/auth/google`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ access_token: tokenResponse.access_token }),
         });
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.message || "Google sign-up failed.");
+          throw new Error(data.error?.message || 'Google sign-up failed.');
         }
 
-        console.log("google signup success");
-        // TODO: redirect on success, e.g. navigate('/dashboard')
+        navigate('/dashboard');
       } catch (err) {
-        setError(err.message || "Something went wrong. Try again.");
+        setError(err.message || 'Something went wrong. Try again.');
       } finally {
         setLoading(false);
       }
     },
-    onError: () => setError("Google sign-up failed."),
+    onError: () => setError('Google sign-up failed.'),
   });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setError('');
 
     const { username, email, password, confirmPassword } = formData;
 
     if (!username || !email || !password || !confirmPassword) {
-      setError("Fill in every field.");
+      setError('Fill in every field.');
       return;
     }
 
     if (username.trim().length < 3) {
-      setError("Username needs at least 3 characters.");
+      setError('Username needs at least 3 characters.');
       return;
     }
 
     if (password.length < 8) {
-      setError("Password needs at least 8 characters.");
+      setError('Password needs at least 8 characters.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError('Passwords do not match.');
       return;
     }
 
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/auth/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        // Flat object, no confirmPassword — the backend only needs
-        // the fields it will actually store/verify.
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username, email, password }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || "Can't create account.");
+        throw new Error(data.error?.message || "Can't create account.");
       }
 
-      console.log("signup success", { username, email });
-      // TODO: redirect on success, e.g. navigate('/login')
+      navigate('/dashboard');
     } catch (err) {
-      setError(err.message || "Something went wrong. Try again.");
+      setError(err.message || 'Something went wrong. Try again.');
     } finally {
       setLoading(false);
     }
@@ -104,13 +100,12 @@ const Signup = () => {
   return (
     <div
       style={{
-        width: "100%",
-        height: "100vh",
-        position: "relative",
-        background: "black",
+        width: '100%',
+        height: '100vh',
+        position: 'relative',
+        background: 'black',
       }}
     >
-      {/* Background */}
       <PixelBlast
         variant="square"
         pixelSize={4}
@@ -138,7 +133,7 @@ const Signup = () => {
             <h1 className="login-title">Create your account</h1>
             <p className="login-subtext">Start building in minutes.</p>
           </div>
-          {/* Google sign in btn */}
+
           <button
             type="button"
             className="google-btn"
@@ -169,8 +164,6 @@ const Signup = () => {
           <div className="login-divider">
             <span>or use your email</span>
           </div>
-
-          {/* OUR LOGIN BTN */}
 
           <form className="login-form" onSubmit={handleSubmit}>
             <label className="login-label" htmlFor="username">
@@ -208,7 +201,7 @@ const Signup = () => {
               <input
                 id="password"
                 name="password"
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 placeholder="••••••••"
                 value={formData.password}
@@ -219,9 +212,9 @@ const Signup = () => {
                 type="button"
                 className="toggle-visibility"
                 onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? "hide" : "show"}
+                {showPassword ? 'hide' : 'show'}
               </button>
             </div>
 
@@ -231,7 +224,7 @@ const Signup = () => {
             <input
               id="confirmPassword"
               name="confirmPassword"
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               placeholder="••••••••"
               value={formData.confirmPassword}
@@ -243,13 +236,13 @@ const Signup = () => {
 
             <button type="submit" className="login-submit" disabled={loading}>
               <span className="login-submit-dot" />
-              <span>{loading ? "creating account" : "create-account"}</span>
+              <span>{loading ? 'creating account' : 'create-account'}</span>
               {!loading && <span className="login-submit-cursor" />}
             </button>
           </form>
 
           <p className="login-footer">
-            Already have an account?{" "}
+            Already have an account?{' '}
             <a href="/login" className="login-link">
               Sign in
             </a>
