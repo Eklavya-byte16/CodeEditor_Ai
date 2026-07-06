@@ -1,0 +1,103 @@
+import LaserFlow from '@/Components/ui/laserFlow.jsx';
+import { useRef } from 'react';
+import './Home.css';
+
+function Home() {
+  const revealImgRef = useRef(null);
+
+  return (
+    <div
+      style={{
+        height: '1350px',
+        position: 'relative',
+        overflow: 'hidden',
+        backgroundColor: '#0B0910'
+      }}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const el = revealImgRef.current;
+        if (el) {
+          el.style.setProperty('--mx', `${x}px`);
+          el.style.setProperty('--my', `${y + rect.height * 0.5}px`);
+        }
+      }}
+      onMouseLeave={() => {
+        const el = revealImgRef.current;
+        if (el) {
+          el.style.setProperty('--mx', '-9999px');
+          el.style.setProperty('--my', '-9999px');
+        }
+      }}
+    >
+      {/* Hero content */}
+      <div className="hero-copy absolute z-50 top-40 left-6 md:left-14 flex flex-col gap-6 max-w-xl">
+        <span className="eyebrow">AI THAT SHIPS CODE</span>
+
+        <h1 className="headline">
+          Say it. It builds.
+          <br />
+          It <span className="accent">runs.</span>
+        </h1>
+
+        <p className="subhead">
+          One assistant that writes full applications and runs them live —
+          no copy-pasting into a terminal, no missing dependencies, no
+          guesswork.
+        </p>
+
+        <a href="/signup" className="terminal-cta">
+         Get started
+        </a>
+      </div>
+
+      <LaserFlow
+        horizontalBeamOffset={0.2}
+        verticalBeamOffset={0.0}
+        color="#CF9EFF"
+        horizontalSizing={0.6}
+        verticalSizing={2}
+        wispDensity={1}
+        wispSpeed={15}
+        wispIntensity={5}
+        flowSpeed={0.35}
+        flowStrength={0.25}
+        fogIntensity={0.45}
+        fogScale={0.3}
+        fogFallSpeed={0.6}
+        decay={1.1}
+        falloffStart={1.2}
+      />
+
+      <div className="console-panel">
+ 
+      </div>
+
+      <img
+        ref={revealImgRef}
+        src="p1.png"
+        alt="Reveal effect"
+        style={{
+          position: 'absolute',
+          width: '100%',
+          top: '-50%',
+          zIndex: 5,
+          mixBlendMode: 'lighten',
+          opacity: 0.3,
+          pointerEvents: 'none',
+          '--mx': '-9999px',
+          '--my': '-9999px',
+          WebkitMaskImage:
+            'radial-gradient(circle at var(--mx) var(--my), rgba(255,255,255,1) 0px, rgba(255,255,255,0.95) 60px, rgba(255,255,255,0.6) 120px, rgba(255,255,255,0.25) 180px, rgba(255,255,255,0) 240px)',
+          maskImage:
+            'radial-gradient(circle at var(--mx) var(--my), rgba(255,255,255,1) 0px, rgba(255,255,255,0.95) 60px, rgba(255,255,255,0.6) 120px, rgba(255,255,255,0.25) 180px, rgba(255,255,255,0) 240px)',
+          WebkitMaskRepeat: 'no-repeat',
+          maskRepeat: 'no-repeat'
+        }}
+      />
+    </div>
+  );
+}
+
+export default Home;
