@@ -1,0 +1,5 @@
+node_modules/
+microservices/.venv/
+microservices/__pycache__/
+*.mp3
+*.wav
